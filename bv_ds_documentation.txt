@@ -1,0 +1,12 @@
+Multiple occurrences of id names
+Do they create some sort of data leakage?
+Delete all but one of them? Use the previous ones to predict the last one?
+
+Statistics of Nan in each field.
+Which fields are categorical:  period, segment, years_on_file(18 values),missing_report,client_industry_unknown,tag_in_six_months
+
+Categories converted to numeric
+
+Impute (many values) for years_on_file
+
+Split the data to train+test (validation?).
