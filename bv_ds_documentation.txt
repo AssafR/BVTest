@@ -5,15 +5,34 @@
 
 Data Manipulation:
 1. Categorical variables were converted to boolean (coded as integer 0/1).
-2. Specifically, the field "years_on_file" which is a text field with strings that look like:
-     "between 12 and 14 years" (18 different caregories in general) was converted to a set of boolean variables, each
-     one representing that information is relevant "up to" a certain number of years (rounded up).
 
-     For example, "between 12 and 14 years" was interpreted as "14", and converted to a boolean True for the variables
-     representing 0.5,1,1.5,2,2.5,3,5,6,8,10,12,14 and 0 for the variables representing 17,20,25,30,35,50 .
-     The logic is that the information is overlapping: Having information up to 14 years also means having information
-      on 12,5, etc.
-3.
+2. Specifically, the field "years_on_file" which is a text field with strings that look like:
+    "between 12 and 14 years" (18 different caregories in general) was converted to a set of boolean variables, each
+        one representing that information is relevant "up to" a certain number of years (rounded up).
+
+    For example, "between 12 and 14 years" was interpreted as "14", and converted to a boolean True for the variables
+        representing 0.5,1,1.5,2,2.5,3,5,6,8,10,12,14 and 0 for the variables representing 17,20,25,30,35,50 .
+        e.g: "years_file_upto_12".
+    The logic is that the information is overlapping: Having information up to 14 years also means having information
+        on 12,5, etc.
+    "Over 35" was interpreted as "between 35 and 50" to maintain a coherent structure.
+    The interpretation was done by parsing the string for the higher number.
+
+3. For columns which contained NaN, a new boolean column was created indicating if value is Nan.
+    The NaN values were imputed to be 0 (under the assumption that the learning algorithm will learn to use the
+        corresponding "missing value" data in that case.
+
+4. "pit" (Point in Time) field was parsed and translated to "Number of days since the earliest day in the data",
+    for convenience.
+
+5. Unnecessary fields were deleted before the learning phase.
+
+6. The values were scaled linearly (without ) using MinMaxScaler to be in the range 0..1
+
+
+
+
+4. For clients (represented by client_id) which had several entries, used only the last one
 
 Multiple occurrences of id names
 Do they create some sort of data leakage?

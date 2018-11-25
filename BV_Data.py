@@ -17,7 +17,7 @@ regex_years = re.compile('between (.*?) and (.*?) years')
 frame_statistic_functions = [  # Array of different statistics report for a frame
     ["Head", lambda frame: frame.head()],
     ["Data Description", lambda frame: frame.describe()],
-    ["Types", lambda frame: frame.info()],
+    ["Data Types", lambda frame: frame.info()],
     ["Number of NaN values", lambda frame: frame.isna().sum()],
     ["Number of unique values", lambda frame: frame.nunique()]
 ]
@@ -32,12 +32,12 @@ categorical_columns_functions = [
 
 
 def convert_years_to_boolean(source_row):
-    str = source_row['years_on_file']
-    match = regex_years.search(str)
+    years_description = source_row['years_on_file']
+    match = regex_years.search(years_description)
     max_index = years_on_file_bands.index(match.group(2)) + 1
     new_array = [0] * len(years_on_file_bands)
     new_array[0:max_index] = [1] * max_index
-    row = dict(zip(columns_for_years_bands, new_array))
+    row = dict(zip(columns_for_years_bands, new_array)) # Return a dictionary, column:value
     return row
 
 def train_and_predict(df,dropped_columns):
@@ -152,22 +152,16 @@ print("\r\nAfter categorical encoding\r\n------------------------")
 for column in ['period', 'segment', 'years_on_file', 'missing_report', 'client_industry_unknown', 'tag_in_six_months',
                'missing_years_on_file']:
     for func in categorical_columns_functions:
-        print("%s for column %s:\r\n%s\r\n" % (func[0], column, func[1](client_data, column)))
+        print("%s for column %s:\r\n%s" % (func[0], column, func[1](client_data, column)))
 
 client_data = add_years_boolean(client_data)
 
-# Remove the older instances of the same client, only learn from the new ones:
-#client_data = client_data.groupby('client_id').agg(lambda df: df.values[df['time'].values.argmax()])
-
 dropped_columns = ['years_file_upto_0', 'client_id', 'pit', 'years_on_file']
-
-
-
-
 
 client_data_first_funded_120 = client_data.loc[client_data['period'] == 0]
 client_data_first_funded_180 = client_data.loc[client_data['period'] == 1]
 
+print("\r\n------------\r\nStarting model\r\n")
 print("Model for first_funded+120:")
 train_and_predict(client_data_first_funded_120, dropped_columns)
 
