@@ -118,8 +118,8 @@ def create_Nan_indicator_column(dataframe, column, new_column_name, impute, impu
         dataframe[column].fillna(value=imputed_value, inplace=True)
     return dataframe
 
-def run_tests_on_data(df):
 
+def run_tests_on_data(df):
     dropped_columns = ['years_file_upto_0', 'client_id', 'pit', 'years_on_file']
     all_columns_except_current_model = set(df.columns.values) - set(['Current_model_probability', 'tag_in_six_months'])
 
@@ -137,6 +137,7 @@ def run_tests_on_data(df):
     print("Model for first_funded+180:\r\n------------------------")
     train_and_predict(client_data_first_funded_180, dropped_columns)
 
+
 pd.options.display.max_columns = 999
 
 
@@ -153,13 +154,12 @@ def main():
         for func in categorical_columns_functions:
             print("%s for column %s:\r\n%s\r\n" % (func[0], column, func[1](client_data, column)))
 
-
     # Handle the special time field
     client_data['time'] = (pd.to_datetime(client_data['pit']))
     minimum_date = client_data['time'].min()
     client_data['time'] = ((client_data['time'] - minimum_date) / np.timedelta64(1, 'D')).astype(int)  # Count in days
 
-    #Fix and impute data
+    # Fix and impute data
     nan_indicator_new_columns = [
         ("sum_failed_repayments", "missing_sum_failed_repayments", True, 0),
         ("years_on_file", "missing_years_on_file", True, "between 0 and 0 years"),
@@ -197,10 +197,8 @@ def main():
     run_tests_on_data(client_data)
 
 
-
-
 start = time.clock()
 main()
 elapsed = time.clock()
 elapsed = elapsed - start
-print ("Time spent in (Main) is: ", elapsed)
+print("Time spent in (Main) is: ", elapsed)
