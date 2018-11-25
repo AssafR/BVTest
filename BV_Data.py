@@ -1,17 +1,23 @@
+import os
+import pickle
+import numpy as np
 import pandas as pd
 import re as re
-import itertools
-import numpy as np
-import seaborn as sns
-import matplotlib
-from matplotlib import pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import accuracy_score, classification_report
 
-pd.options.display.max_columns = 999
-p = re.compile('between (.*?) and (.*?) years')
 
-frame_statistic_functions = [
+years_on_file_bands = ["0", "0.5", "1", "1.5", "2", "2.5", "3", "5", "6", "8", "10", "12", "14", "17", "20", "25",
+                       "30", "35", "50"]
+columns_for_years_bands = ["years_file_upto_" + x for x in years_on_file_bands]
+regex_years = re.compile('between (.*?) and (.*?) years')
+
+frame_statistic_functions = [  # Array of different statistics report for a frame
     ["Head", lambda frame: frame.head()],
     ["Data Description", lambda frame: frame.describe()],
+    ["Types", lambda frame: frame.info()],
     ["Number of NaN values", lambda frame: frame.isna().sum()],
     ["Number of unique values", lambda frame: frame.nunique()]
 ]
@@ -24,7 +30,83 @@ categorical_columns_functions = [
     ["unique values", lambda frame, column: frame[column].unique()]
 ]
 
+
+def convert_years_to_boolean(source_row):
+    str = source_row['years_on_file']
+    match = regex_years.search(str)
+    max_index = years_on_file_bands.index(match.group(2)) + 1
+    new_array = [0] * len(years_on_file_bands)
+    new_array[0:max_index] = [1] * max_index
+    row = dict(zip(columns_for_years_bands, new_array))
+    return row
+
+def train_and_predict(df,dropped_columns):
+
+    # For clients, only use the latest known data point
+    sorted = df.sort_values(by='time')
+    df = sorted.drop_duplicates(['client_id'], keep='last')
+
+    df = df.drop(dropped_columns, axis=1)
+    df = df.astype(float)
+
+    # Extract the target variable
+    y = df.pop('tag_in_six_months').values
+    X = df
+
+
+    # Split to train and test
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42, shuffle=True)
+
+    # Scaling
+    scaler = MinMaxScaler()
+    scaler.fit(X_train)
+    X_train_scaled = scaler.transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+
+    # Train
+    logisticRegr = LogisticRegression(solver='lbfgs')
+    logisticRegr.fit(X_train_scaled, y_train)
+
+    # Predict
+    predictions = logisticRegr.predict(X_test_scaled)
+
+    #print("Score= %f, Accuracy=%f" % (score,accuracy))
+    print(classification_report(y_test, predictions))
+
+
+def add_years_boolean(df):
+    """Create the new columns based on 'years_on_file' category """
+
+    # New dataframe with same indices but new columns
+    df2 = pd.DataFrame(index=df.index,
+                       columns=columns_for_years_bands)  # New dataframe, same index new columns
+
+    filename = "./df2.pkl"  # Cache
+    if os.path.isfile(filename):
+        df2 = pickle.load(open(filename, "rb"))
+    else:
+        for (idx, row) in df.iterrows():
+            boolean_columns_dict = convert_years_to_boolean(row)
+            df2.iloc[idx] = boolean_columns_dict
+        pickle.dump(df2, open(filename, "wb"))  # Cache
+    df = df.join(df2)  # Join to add new columns
+    return df
+
+
+def create_Nan_indicator_column(dataframe, column, new_column_name, impute, imputed_value):
+    """Create new column, populate 1/0 for missing/exists"""
+    dataframe[new_column_name] = dataframe[column].isnull().map({True: 1, False: 0})
+    if impute:
+        dataframe[column].fillna(value=imputed_value, inplace=True)
+    return dataframe
+
+
+pd.options.display.max_columns = 999
 client_data = pd.read_csv("./data_science_exam_bluevine_file.csv")
+
+client_data['time'] = (pd.to_datetime(client_data['pit']))
+minimum_date = client_data['time'].min()
+client_data['time'] = ((client_data['time'] - minimum_date) / np.timedelta64(1, 'D')).astype(int)  # Count in days
 
 print('Some Data exploration')
 for func in frame_statistic_functions:
@@ -37,10 +119,24 @@ for column in ['period', 'segment', 'years_on_file', 'missing_report', 'client_i
     for func in categorical_columns_functions:
         print("%s for column %s:\r\n%s\r\n" % (func[0], column, func[1](client_data, column)))
 
-# New column indicating there is no data in this important field
-client_data["no_years_on_file"] = client_data["years_on_file"].isnull().map({True:1, False:0})
-# Change the missing values into a standard form
-client_data.fillna(value={'years_on_file': "between 0 and 0 years"},inplace=True)
+""" Fix and impute data"""
+nan_indicator_new_columns = [
+    ("sum_failed_repayments", "missing_sum_failed_repayments", True, 0),
+    ("years_on_file", "missing_years_on_file", True, "between 0 and 0 years"),
+    ("recent_successful_repayments", "missing_recent_successful_repayments", True, 0),
+    ("balance", "missing_balance", True, 0),
+    ("max_failed_repayments", "missing_max_failed_repayments", True, 0),
+    ("credit_score", "missing_credit_score", True, 0),
+    ("credit_inquiries_count", "missing_credit_inquiries_count", True, 0),
+    ("credit_open_balance", "missing_credit_open_balance", True, 0),
+    ("max_successful_repayments", "missing_max_successful_repayments", True, 0),
+    ("available_credit", "missing_available_credit", True, 0),
+
+]
+
+# New column indicating there is no data in this important field + imputation if necessary
+for fill_info in nan_indicator_new_columns:
+    client_data = create_Nan_indicator_column(client_data, fill_info[0], fill_info[1], fill_info[2], fill_info[3])
 
 categorical_replacements = \
     {"period": {"first_funded+120": 0, "first_funded+180": 1},
@@ -54,39 +150,26 @@ client_data.replace(categorical_replacements, inplace=True)
 
 print("\r\nAfter categorical encoding\r\n------------------------")
 for column in ['period', 'segment', 'years_on_file', 'missing_report', 'client_industry_unknown', 'tag_in_six_months',
-               'no_years_on_file']:
+               'missing_years_on_file']:
     for func in categorical_columns_functions:
         print("%s for column %s:\r\n%s\r\n" % (func[0], column, func[1](client_data, column)))
 
-years_on_file_bands = ["0","0.5","1","1.5","2","2.5","3","5","6","8","10","12","14","17","20","25","30","35","50"]
-columns_for_years_bands = ["years_file_over_" + x for x in years_on_file_bands]
+client_data = add_years_boolean(client_data)
 
-#years_column =
+# Remove the older instances of the same client, only learn from the new ones:
+#client_data = client_data.groupby('client_id').agg(lambda df: df.values[df['time'].values.argmax()])
 
-def get_two_indices_from_string(source_row):
-    str = source_row['years_on_file']
-    match = p.search(str)
-    max_index = years_on_file_bands.index(match.group(2)) +1
-    new_array = [0]* len(years_on_file_bands)
-    new_array[0:max_index] = [1]*max_index
-    row = dict(zip(years_on_file_bands,new_array))
-    return row
-
-df2 = pd.DataFrame(index=client_data.index,columns = years_on_file_bands )
-
-print("Calculating")
-for (idx, row) in client_data.iterrows():
-    print(idx)
-    x = get_two_indices_from_string(row)
-    df2.iloc[idx] = x
-
-print("Joining",df2.shape,client_data.shape)
-client_data = client_data.join(df2)
-print(client_data.head())
-
-#client_data['pop']= client_data['continent'].map(pop_dict)
+dropped_columns = ['years_file_upto_0', 'client_id', 'pit', 'years_on_file']
 
 
-#print(client_data.head(10))
-# Enumerate categorical text fields, e.g. field 'tag_in_six_months': enumerate ['bad' 'good']
-# period, segment, tag_in_six_months
+
+
+
+client_data_first_funded_120 = client_data.loc[client_data['period'] == 0]
+client_data_first_funded_180 = client_data.loc[client_data['period'] == 1]
+
+print("Model for first_funded+120:")
+train_and_predict(client_data_first_funded_120, dropped_columns)
+
+print("Model for first_funded+12=180:")
+train_and_predict(client_data_first_funded_180, dropped_columns)

@@ -1,3 +1,20 @@
+    1. Describe any data manipulation you performed
+    2. Describe the algorithm you chose and the results
+    3. Describe the performances of the model
+
+
+Data Manipulation:
+1. Categorical variables were converted to boolean (coded as integer 0/1).
+2. Specifically, the field "years_on_file" which is a text field with strings that look like:
+     "between 12 and 14 years" (18 different caregories in general) was converted to a set of boolean variables, each
+     one representing that information is relevant "up to" a certain number of years (rounded up).
+
+     For example, "between 12 and 14 years" was interpreted as "14", and converted to a boolean True for the variables
+     representing 0.5,1,1.5,2,2.5,3,5,6,8,10,12,14 and 0 for the variables representing 17,20,25,30,35,50 .
+     The logic is that the information is overlapping: Having information up to 14 years also means having information
+      on 12,5, etc.
+3.
+
 Multiple occurrences of id names
 Do they create some sort of data leakage?
 Delete all but one of them? Use the previous ones to predict the last one?
@@ -7,6 +24,15 @@ Which fields are categorical:  period, segment, years_on_file(18 values),missing
 
 Categories converted to numeric
 
-Impute (many values) for years_on_file
+For every column where there are missing values (NaN), create a new column indicating a missing column, and impute the
+ missing values (normally with 0). E.g: years_on_file -> missing_years_on_file (0/1).
+
+Possible new feature, balance vs. loan size?
+
+
+Normalize (Before imputation?)
+
+
+
 
 Split the data to train+test (validation?).

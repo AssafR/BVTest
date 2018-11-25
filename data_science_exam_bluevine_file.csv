@@ -1,4 +1,4 @@
-client_id,pit,period,segment,recent_successful_repayments,Current_model_probability,available_credit,balance,sum_failed_repayments ,max_failed_repayments,credit_score,external score,credit_inquiries_count,credit_open_balance,years_on_file,max_successful_repayments,missing_report,client_industry_unknown,tag_in_six_months
+client_id,pit,period,segment,recent_successful_repayments,Current_model_probability,available_credit,balance,sum_failed_repayments,max_failed_repayments,credit_score,external score,credit_inquiries_count,credit_open_balance,years_on_file,max_successful_repayments,missing_report,client_industry_unknown,tag_in_six_months
 37544,7/2/16,first_funded+120,old,7042.072861,0.688517707,541.8969475,9494.157563,478.7405719,138.1265942,623,900.5,6,41608,between 5 and 6 years,,0,0,bad
 42193,7/2/16,first_funded+120,old,,0.651311021,1234.448117,8787.884771,,,617,891.5,3,55912,,,0,0,bad
 23697,7/2/16,first_funded+120,old,,0.467098751,-10415.87336,20430.07821,,,684,992,27,61338,between 0.5 and 1 years,,0,0,bad
