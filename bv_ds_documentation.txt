@@ -7,7 +7,7 @@ Data Manipulation:
 1. Categorical variables were converted to boolean (coded as integer 0/1).
 
 2. Specifically, the field "years_on_file" which is a text field with strings that look like:
-    "between 12 and 14 years" (18 different caregories in general) was converted to a set of boolean variables, each
+    "between 12 and 14 years" (18 different categories in general) was converted to a set of boolean variables, each
         one representing that information is relevant "up to" a certain number of years (rounded up).
 
     For example, "between 12 and 14 years" was interpreted as "14", and converted to a boolean True for the variables
@@ -25,33 +25,83 @@ Data Manipulation:
 4. "pit" (Point in Time) field was parsed and translated to "Number of days since the earliest day in the data",
     for convenience.
 
-5. Unnecessary fields were deleted before the learning phase.
+5. For clients (represented by client_id) which had several entries, used only the last one.
+    This is in order to prevent data leakage, where the user ends up in both the train and the test set, possibly
+     more than once.
 
-6. The values were scaled linearly (without ) using MinMaxScaler to be in the range 0..1
+6. Unnecessary fields were deleted before the learning phase.
 
-
-
-
-4. For clients (represented by client_id) which had several entries, used only the last one
-
-Multiple occurrences of id names
-Do they create some sort of data leakage?
-Delete all but one of them? Use the previous ones to predict the last one?
-
-Statistics of Nan in each field.
-Which fields are categorical:  period, segment, years_on_file(18 values),missing_report,client_industry_unknown,tag_in_six_months
-
-Categories converted to numeric
-
-For every column where there are missing values (NaN), create a new column indicating a missing column, and impute the
- missing values (normally with 0). E.g: years_on_file -> missing_years_on_file (0/1).
-
-Possible new feature, balance vs. loan size?
-
-
-Normalize (Before imputation?)
+7. The values were scaled linearly using MinMaxScaler to be in the range 0..1
+    Mean 0 was not used so as not to disturb the 0 value with its special meaning.
 
 
 
+The algorithms chosen:
 
-Split the data to train+test (validation?).
+First, as per recommendation in the brief, the data was split based on the 'period'
+ variable, with a model for each value.
+The data was randomly split to a 60% train set and 40% test set.
+
+After that, two classification algorithms from scikitlearn were used to infer the result.
+ * A simple LogisticRegression
+ * A fancy GradientBoostingClassifier
+
+
+The results:
+
+Model for first_funded+120:
+------------------------
+    Results for Logistic Regression:
+                Baseline                                   |         Full Data
+                  precision    recall  f1-score   support  | precision    recall  f1-score   support
+             0.0       0.93      0.99      0.96      1075  |     0.0       0.96      0.99      0.97      1075
+             1.0       0.90      0.61      0.73       200  |     1.0       0.92      0.78      0.85       200
+
+    Results for GradientBoostingClassifier:
+                Baseline                                    |        Full Data
+                  precision    recall  f1-score   support   |precision    recall  f1-score   support
+             0.0       0.94      0.97      0.96      1075   |     0.0       0.96      0.98      0.97      1075
+             1.0       0.83      0.69      0.75       200   |     1.0       0.89      0.80      0.84       200
+
+
+Model for first_funded+180:
+------------------------
+    Results for Logistic Regression:
+                Baseline                                   |         Full Data
+                  precision    recall  f1-score   support  | precision    recall  f1-score   support
+             0.0       0.94      0.98      0.96      1064  |     0.0       0.95      0.99      0.97      1064
+             1.0       0.87      0.74      0.80       242  |     1.0       0.93      0.76      0.84       242
+
+    Results for GradientBoostingClassifier:
+                Baseline                                   |         Full Data
+                  precision    recall  f1-score   support  | precision    recall  f1-score   support
+             0.0       0.94      0.96      0.95      1064  |     0.0       0.96      0.98      0.97      1064
+             1.0       0.82      0.73      0.77       242  |     1.0       0.91      0.84      0.87       242
+
+
+Performance (results-wise):
+
+As a baseline, the same algorithms were tested to learn from a single attribute, which is the
+ output of the current model (field "Current_model_probability").
+
+The results seem somewhat too high - however the baseline seems very high too, and it is assumed that it is a
+ good classifier, so using its output + more data might give a slightly higher results. I have not tried to analyze
+ more deeply if there is some kind of data leakage.
+
+
+
+
+Performance (time-wise):
+
+The total code running time was 34 sec.
+This is almost entirely due to the slow performance of the method add_years_boolean which calculates the
+ boolean variables for the "years_on_file" variable.
+I cached the results of this method in an external Pickle file for quicker performance during iterations,
+    and they changed significantly when using the cache.
+
+Before:
+    Time spent in (Main) is:  34.81769962757546
+After:
+    Time spent in (Main) is:  2.0391585030484927
+
+This time also includes calculating and printing some exploratory data.
